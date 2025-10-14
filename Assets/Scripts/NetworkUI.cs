@@ -1,19 +1,20 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
-public class NetworkUI : MonoBehaviour
+public class NetworkUI_TMPro : MonoBehaviour
 {
-    public InputField serverNameInput;
+    public TMP_InputField serverNameInput;
     public Button startTcpServerBtn;
     public Button startUdpServerBtn;
 
-    public InputField serverIpInput;
-    public InputField playerNameInput;
+    public TMP_InputField serverIpInput;
+    public TMP_InputField playerNameInput;
     public Button connectTcpBtn;
     public Button connectUdpBtn;
     public Button sendNameBtn;
 
-    public Text logText;
+    public TMP_Text logText;
 
     public TcpServer tcpServer;
     public TcpClientConnector tcpClient;
