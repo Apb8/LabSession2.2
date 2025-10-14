@@ -29,7 +29,7 @@ public class TcpClientConnector : MonoBehaviour
         try
         {
             client = new TcpClient();
-            client.Connect(serverIp, serverPort); // blocking
+            client.Connect(serverIp, serverPort);
             stream = client.GetStream();
             MainThreadDispatcher.Enqueue(() => Debug.Log($"Connected to TCP server {serverIp}:{serverPort}"));
             MainThreadDispatcher.Enqueue(() => {
@@ -61,7 +61,7 @@ public class TcpClientConnector : MonoBehaviour
                     continue;
                 }
 
-                int bytesRead = stream.Read(buffer, 0, buffer.Length); // blocking
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
                 if (bytesRead == 0) break;
                 string msg = Encoding.ASCII.GetString(buffer, 0, bytesRead);
                 MainThreadDispatcher.Enqueue(() => {

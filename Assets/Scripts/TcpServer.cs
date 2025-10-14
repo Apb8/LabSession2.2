@@ -44,7 +44,7 @@ public class TcpServer : MonoBehaviour
         {
             while (running)
             {
-                TcpClient client = listener.AcceptTcpClient(); // blocking
+                TcpClient client = listener.AcceptTcpClient();
                 lock (clients) clients.Add(client);
                 var remote = client.Client.RemoteEndPoint.ToString();
                 MainThreadDispatcher.Enqueue(() =>
@@ -78,7 +78,7 @@ public class TcpServer : MonoBehaviour
             byte[] buffer = new byte[1024];
             while (running && client.Connected)
             {
-                int bytesRead = stream.Read(buffer, 0, buffer.Length); // blocking
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
                 if (bytesRead == 0) break;
                 string msg = Encoding.ASCII.GetString(buffer, 0, bytesRead);
 
@@ -89,8 +89,7 @@ public class TcpServer : MonoBehaviour
                     var ui = FindFirstObjectByType<NetworkUI_TMPro>();
                     if (ui != null) ui.AppendLog("[Server] " + msg);
                 });
-
-                // Example: respond "ping" (keep behavior)
+                                
                 try
                 {
                     byte[] outb = Encoding.ASCII.GetBytes("ping");
@@ -183,7 +182,7 @@ public class TcpServer : MonoBehaviour
 
     string GetLocalIpString()
     {
-        // keep simple and consistent: localhost for local testing
+        // localhost for local testing
         return "127.0.0.1";
     }
 }

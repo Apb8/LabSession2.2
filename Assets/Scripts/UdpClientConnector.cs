@@ -42,7 +42,7 @@ public class UdpClientConnector : MonoBehaviour
         {
             while (running)
             {
-                byte[] data = udp.Receive(ref remoteEP); // blocking
+                byte[] data = udp.Receive(ref remoteEP);
                 string msg = Encoding.ASCII.GetString(data);
                 MainThreadDispatcher.Enqueue(() => Debug.Log($"UDP Received from {remoteEP}: {msg}"));
             }

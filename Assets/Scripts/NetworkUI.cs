@@ -7,37 +7,37 @@ using System.Reflection;
 
 public class NetworkUI_TMPro : MonoBehaviour
 {
-    // CONSTANTE fallback si no se provee puerto
+    // pongo puerto const default
     const int DEFAULT_PORT = 9050;
 
     // COMMON
     public TMP_Text logText;
-    public ScrollRect logScrollRect; // asigna el ScrollView (ScrollRect)
+    public ScrollRect logScrollRect;
 
     // SERVER UI
     public TMP_InputField serverNameInput;
-    public TMP_InputField serverPortInput; // ahora editable en CreateGame
-    public TMP_Dropdown serverProtocolDropdown; // 0 = TCP, 1 = UDP
+    public TMP_InputField serverPortInput; // editable
+    public TMP_Dropdown serverProtocolDropdown;
     public Button startServerBtn;
     public Button stopServerBtn;
     public TMP_Text statusTextServer;
 
-    // CLIENT UI
+    //CLIENT UI
     public TMP_InputField serverIpInput;
-    public TMP_InputField clientPortInput; // puerto en JoinGame
+    public TMP_InputField clientPortInput;
     public TMP_InputField playerNameInput;
-    public TMP_Dropdown clientProtocolDropdown; // 0 = TCP, 1 = UDP
+    public TMP_Dropdown clientProtocolDropdown;
     public Button connectBtn;
     public Button disconnectBtn;
     public TMP_Text statusTextClient;
 
-    // Messaging (optional)
+    // Messaging
     public TMP_InputField messageInputServer;
     public Button sendServerBtn;
     public TMP_InputField messageInputClient;
     public Button sendClientBtn;
 
-    // Network scripts
+    //Network scripts
     public TcpServer tcpServer;
     public TcpClientConnector tcpClient;
     public UdpServer udpServer;
@@ -67,7 +67,7 @@ public class NetworkUI_TMPro : MonoBehaviour
             {
                 startServerBtn.onClick.AddListener(() =>
                 {
-                    int proto = serverProtocolDropdown != null ? serverProtocolDropdown.value : 0; // 0 TCP, 1 UDP
+                    int proto = serverProtocolDropdown != null ? serverProtocolDropdown.value : 0;
                     int port = ParsePort(serverPortInput, DEFAULT_PORT);
                     string sName = serverNameInput != null ? serverNameInput.text : "Server";
 
@@ -115,7 +115,7 @@ public class NetworkUI_TMPro : MonoBehaviour
                 });
             }
 
-            // server send message (optional: will try to call a broadcast/send method on server if exists)
+            // server send message
             if (sendServerBtn != null)
             {
                 sendServerBtn.onClick.AddListener(() =>
@@ -124,7 +124,7 @@ public class NetworkUI_TMPro : MonoBehaviour
                     if (string.IsNullOrEmpty(msg)) { AppendLog("[Server] Empty message, nothing sent."); return; }
 
                     bool sent = false;
-                    // Try TCP server broadcast method if exists
+                    
                     if (tcpServer != null)
                     {
                         MethodInfo mi = tcpServer.GetType().GetMethod("Broadcast", BindingFlags.Instance | BindingFlags.Public);
@@ -134,7 +134,7 @@ public class NetworkUI_TMPro : MonoBehaviour
                             sent = true;
                         }
                     }
-                    // Try UDP server send method if exists
+                    
                     if (!sent && udpServer != null)
                     {
                         MethodInfo mi = udpServer.GetType().GetMethod("Broadcast", BindingFlags.Instance | BindingFlags.Public);
@@ -196,7 +196,7 @@ public class NetworkUI_TMPro : MonoBehaviour
                 });
             }
 
-            // Disconnect button
+            // Disconnect btn
             if (disconnectBtn != null)
             {
                 disconnectBtn.onClick.AddListener(() =>
@@ -215,7 +215,7 @@ public class NetworkUI_TMPro : MonoBehaviour
                 });
             }
 
-            // client send message (general purpose)
+            // client send message
             if (sendClientBtn != null)
             {
                 sendClientBtn.onClick.AddListener(() =>
@@ -241,7 +241,7 @@ public class NetworkUI_TMPro : MonoBehaviour
 
         // If neither server nor client scene, warn
         if (!isServerScene && !isClientScene)
-            Debug.Log("NetworkUI: escena no reconocida; coloca el NetworkUI apropiado o renombra la escena para que contenga 'server'/'client' o 'creategame'/'joingame'.");
+            Debug.Log("NetworkUI: escena no reconocida; coloca el NetworkUI apropiado o renombra la escena");
     }
 
     int ParsePort(TMP_InputField portField, int fallback)
@@ -250,7 +250,7 @@ public class NetworkUI_TMPro : MonoBehaviour
         int p = fallback;
         if (!int.TryParse(portField.text, out p))
         {
-            AppendLog($"Puerto inválido '{portField.text}', usando {fallback}");
+            AppendLog($"Puerto invalido '{portField.text}', usando {fallback}");
             p = fallback;
         }
         return p;
