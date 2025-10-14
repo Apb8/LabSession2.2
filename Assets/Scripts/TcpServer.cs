@@ -10,20 +10,32 @@ public class TcpServer : MonoBehaviour
 {
     public int port = 9050;
     TcpListener listener;
-    bool running = false;
+    volatile bool running = false;
     List<TcpClient> clients = new List<TcpClient>();
-
     Thread listenThread;
 
     public void StartServer()
     {
         if (running) return;
-        running = true;
-        listener = new TcpListener(IPAddress.Any, port);
-        listener.Start();
-        listenThread = new Thread(ListenLoop) { IsBackground = true };
-        listenThread.Start();
-        MainThreadDispatcher.Enqueue(() => Debug.Log("TCP server started on port " + port));
+        try
+        {
+            listener = new TcpListener(IPAddress.Any, port);
+            listener.Start();
+            running = true;
+            listenThread = new Thread(ListenLoop) { IsBackground = true };
+            listenThread.Start();
+
+            MainThreadDispatcher.Enqueue(() =>
+            {
+                Debug.Log("TCP server started on port " + port);
+                var ui = FindFirstObjectByType<NetworkUI_TMPro>();
+                if (ui != null) ui.AppendLog($"[Server] TCP server started on {GetLocalIpString()}:{port}");
+            });
+        }
+        catch (Exception e)
+        {
+            MainThreadDispatcher.Enqueue(() => Debug.LogError("StartServer error: " + e.Message));
+        }
     }
 
     void ListenLoop()
@@ -35,47 +47,143 @@ public class TcpServer : MonoBehaviour
                 TcpClient client = listener.AcceptTcpClient(); // blocking
                 lock (clients) clients.Add(client);
                 var remote = client.Client.RemoteEndPoint.ToString();
-                MainThreadDispatcher.Enqueue(() => Debug.Log("Client connected: " + remote));
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    Debug.Log("Client connected: " + remote);
+                    var ui = FindFirstObjectByType<NetworkUI_TMPro>();
+                    if (ui != null) ui.AppendLog($"[Server] Client connected: {remote}");
+                });
+
                 Thread clientThread = new Thread(() => ClientLoop(client)) { IsBackground = true };
                 clientThread.Start();
             }
         }
-        catch (Exception e) { MainThreadDispatcher.Enqueue(() => Debug.Log("Listen error: " + e.Message)); }
+        catch (SocketException se)
+        {
+            // listener stopped or socket error
+            MainThreadDispatcher.Enqueue(() => Debug.LogWarning("ListenLoop stopped: " + se.Message));
+        }
+        catch (Exception e)
+        {
+            MainThreadDispatcher.Enqueue(() => Debug.LogError("Listen error: " + e.Message));
+        }
     }
 
     void ClientLoop(TcpClient client)
     {
-        var stream = client.GetStream();
-        byte[] buffer = new byte[1024];
+        NetworkStream stream = null;
         try
         {
+            stream = client.GetStream();
+            byte[] buffer = new byte[1024];
             while (running && client.Connected)
             {
                 int bytesRead = stream.Read(buffer, 0, buffer.Length); // blocking
                 if (bytesRead == 0) break;
                 string msg = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                MainThreadDispatcher.Enqueue(() => Debug.Log("TCP Received: " + msg));
-                // responder con "ping"
-                byte[] outb = Encoding.ASCII.GetBytes("ping");
-                stream.Write(outb, 0, outb.Length);
+
+                // Log to console + UI
+                MainThreadDispatcher.Enqueue(() =>
+                {
+                    Debug.Log("TCP Received: " + msg);
+                    var ui = FindFirstObjectByType<NetworkUI_TMPro>();
+                    if (ui != null) ui.AppendLog("[Server] " + msg);
+                });
+
+                // Example: respond "ping" (keep behavior)
+                try
+                {
+                    byte[] outb = Encoding.ASCII.GetBytes("ping");
+                    stream.Write(outb, 0, outb.Length);
+                }
+                catch (Exception writeEx)
+                {
+                    MainThreadDispatcher.Enqueue(() => Debug.LogWarning("Write to client failed: " + writeEx.Message));
+                }
             }
         }
-        catch (Exception e) { MainThreadDispatcher.Enqueue(() => Debug.Log("Client loop error: " + e.Message)); }
+        catch (Exception e)
+        {
+            MainThreadDispatcher.Enqueue(() => Debug.LogError("Client loop error: " + e.Message));
+        }
         finally
         {
-            client.Close();
-            lock (clients) clients.Remove(client);
-            MainThreadDispatcher.Enqueue(() => Debug.Log("Client disconnected"));
+            try { client.Close(); } catch { }
+            lock (clients) { clients.Remove(client); }
+            MainThreadDispatcher.Enqueue(() =>
+            {
+                Debug.Log("Client disconnected");
+                var ui = FindFirstObjectByType<NetworkUI_TMPro>();
+                if (ui != null) ui.AppendLog("[Server] Client disconnected");
+            });
         }
+    }
+
+    public void Broadcast(string message)
+    {
+        byte[] data = Encoding.ASCII.GetBytes(message);
+        lock (clients)
+        {
+            foreach (var c in clients.ToArray())
+            {
+                try
+                {
+                    if (c != null && c.Connected)
+                    {
+                        var s = c.GetStream();
+                        if (s != null && s.CanWrite)
+                        {
+                            s.Write(data, 0, data.Length);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    MainThreadDispatcher.Enqueue(() => Debug.LogWarning("Broadcast error to a client: " + e.Message));
+                }
+            }
+        }
+        MainThreadDispatcher.Enqueue(() =>
+        {
+            var ui = FindFirstObjectByType<NetworkUI_TMPro>();
+            if (ui != null) ui.AppendLog("[Server] Broadcast: " + message);
+        });
     }
 
     public void StopServer()
     {
         running = false;
-        try { listener?.Stop(); }
-        catch { }
-        lock (clients) { foreach (var c in clients) c.Close(); clients.Clear(); }
+        try
+        {
+            listener?.Stop();
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("StopServer listener stop error: " + e.Message);
+        }
+
+        lock (clients)
+        {
+            foreach (var c in clients) try { c.Close(); } catch { }
+            clients.Clear();
+        }
+
+        MainThreadDispatcher.Enqueue(() =>
+        {
+            Debug.Log("TCP server stopped");
+            var ui = FindFirstObjectByType<NetworkUI_TMPro>();
+            if (ui != null) ui.AppendLog("[Server] Stopped");
+        });
     }
 
-    void OnApplicationQuit() { StopServer(); }
+    void OnApplicationQuit()
+    {
+        StopServer();
+    }
+
+    string GetLocalIpString()
+    {
+        // keep simple and consistent: localhost for local testing
+        return "127.0.0.1";
+    }
 }
